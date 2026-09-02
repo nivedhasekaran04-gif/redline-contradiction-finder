@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Redline — Contradiction Finder</title>
+<style>
+  :root {
+    --paper: #FBFAF5;
+    --paper-line: #E4E0D2;
+    --ink: #1C2331;
+    --ink-soft: #565F72;
+    --mark: #B5312A;
+    --mark-bg: #FBEAE8;
+    --mark-line: #E3A9A3;
+    --gold: #8A6B1E;
+    --gold-bg: #F7EFDA;
+    --gold-line: #E0CE9F;
+    --serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #EFEBDF;
+    color: var(--ink);
+    font-family: var(--sans);
+    min-height: 100vh;
+  }
+  .shell {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 40px 28px 80px;
+  }
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 14px;
+  }
+  h1 {
+    font-family: var(--serif);
+    font-size: 30px;
+    font-weight: 400;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  h1 span { color: var(--mark); font-style: italic; }
+  .tagline {
+    font-size: 13px;
+    color: var(--ink-soft);
+    font-family: var(--sans);
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 32px;
+    margin-top: 32px;
+    align-items: start;
+  }
+  @media (max-width: 880px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+  .panel-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-soft);
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+  .doc-frame {
+    background: var(--paper);
+    border: 1px solid var(--paper-line);
+    box-shadow: 0 1px 0 var(--paper-line), 0 8px 24px rgba(28,35,49,0.06);
+    position: relative;
+    padding: 4px 4px 4px 40px;
+  }
+  .doc-frame::before {
+    content: '';
+    position: absolute;
+    left: 30px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--mark-line);
+  }
+  textarea {
+    width: 100%;
+    min-height: 460px;
+    border: none;
+    background: transparent;
+    resize: vertical;
+    font-family: var(--serif);
+    font-size: 15px;
+    line-height: 1.75;
+    color: var(--ink);
+    padding: 24px 20px;
+    outline: none;
+  }
+  textarea::placeholder { color: #9A9483; font-style: italic; }
+  .doc-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+    align-items: center;
+  }
+  button {
+    font-family: var(--sans);
+    font-size: 13.5px;
+    font-weight: 600;
+    border-radius: 3px;
+    cursor: pointer;
+    border: 1px solid var(--ink);
+  }
+  .btn-primary {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 11px 22px;
+  }
+  .btn-primary:hover { background: #2C384F; }
+  .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink);
+    border-color: var(--paper-line);
+    padding: 11px 16px;
+  }
+  .btn-ghost:hover { border-color: var(--ink); }
+  .sample-note {
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+  .findings-frame {
+    min-height: 200px;
+  }
+  .count-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 14px;
+  }
+  .count-bar .num {
+    font-family: var(--serif);
+    font-size: 22px;
+  }
+  .finding {
+    background: #fff;
+    border: 1px solid var(--paper-line);
+    border-left: 3px solid var(--mark);
+    padding: 16px 18px;
+    margin-bottom: 12px;
+  }
+  .finding.minor { border-left-color: var(--gold); }
+  .finding-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .sev-tag {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 2px;
+    background: var(--mark-bg);
+    color: var(--mark);
+  }
+  .finding.minor .sev-tag { background: var(--gold-bg); color: var(--gold); }
+  .finding-topic {
+    font-size: 12px;
+    color: var(--ink-soft);
+    font-weight: 600;
+  }
+  .quote-pair {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .quote {
+    font-family: var(--serif);
+    font-size: 14px;
+    line-height: 1.55;
+    padding: 8px 10px;
+    background: #F7F5EE;
+    border-left: 2px solid var(--paper-line);
+  }
+  .quote .loc {
+    display: block;
+    font-family: var(--sans);
+    font-size: 10.5px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+  .why {
+    font-size: 13px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+  }
+  .empty-state {
+    font-family: var(--serif);
+    font-style: italic;
+    color: var(--ink-soft);
+    font-size: 14.5px;
+    padding: 40px 20px;
+    text-align: center;
+    border: 1px dashed var(--paper-line);
+  }
+  .status-line {
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-bottom: 14px;
+  }
+  .error-box {
+    background: var(--mark-bg);
+    border: 1px solid var(--mark-line);
+    color: var(--mark);
+    padding: 12px 14px;
+    font-size: 13px;
+    margin-bottom: 14px;
+  }
+  .spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--paper-line);
+    border-top-color: var(--mark);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: -2px;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .clean {
+    font-family: var(--serif);
+    font-size: 14.5px;
+    color: #3A6B3A;
+    padding: 14px 16px;
+    background: #EEF5EA;
+    border: 1px solid #C9DEC0;
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <h1>Redline<span>.</span></h1>
+    <div class="tagline">Finds the sentences in a document that disagree with each other</div>
+  </header>
+
+  <div id="keyBar" style="display:flex; align-items:center; gap:10px; margin-top:16px; padding:12px 16px; background:#F7F5EE; border:1px solid var(--paper-line); font-size:13px;">
+    <span style="color:var(--ink-soft);">Google Gemini API key:</span>
+    <input type="password" id="apiKeyInput" placeholder="AIza..." style="flex:1; max-width:340px; padding:6px 8px; font-family:var(--sans); font-size:13px; border:1px solid var(--paper-line); border-radius:3px;">
+    <span style="color:var(--ink-soft); font-size:12px;">Kept only in this browser tab — never saved or sent anywhere but Google.</span>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="panel-label">The document</div>
+      <div class="doc-frame">
+        <textarea id="docInput" placeholder="Paste a contract, policy, terms of service, or any long document here. Redline will scan it for statements that contradict each other — mismatched dates, numbers, rules, or conditions."></textarea>
+      </div>
+      <div class="doc-actions">
+        <button class="btn-primary" id="scanBtn">Scan for contradictions</button>
+        <button class="btn-ghost" id="sampleBtn">Load sample document</button>
+        <span class="sample-note" id="charCount"></span>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel-label">Findings</div>
+      <div class="findings-frame" id="resultsArea">
+        <div class="empty-state">Paste a document and scan it. Contradictions will appear here, each with the two conflicting passages side by side.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SAMPLE_DOC = `SECTION 3: RETURNS AND REFUNDS
+Customers may request a refund within 7 days of purchase, provided the item is unused and in its original packaging. Refund requests must be submitted through the online portal.
+
+SECTION 4: SUBSCRIPTION TERMS
+All subscription plans renew automatically on a monthly basis unless cancelled at least 3 business days before the renewal date. There is no minimum commitment period.
+
+SECTION 8: WARRANTY
+Products are covered by a 12-month limited warranty from the date of delivery. Warranty claims are handled separately from standard returns.
+
+SECTION 11: CANCELLATION POLICY
+Subscribers who wish to cancel must provide written notice at least 14 days before their next billing cycle. Failure to do so will result in the subscription renewing for another full term.
+
+SECTION 15: EXTENDED PROTECTION PLAN
+Customers who purchase the Extended Protection Plan receive an additional 6 months of coverage beyond the standard warranty, for a total of 24 months of protection.
+
+SECTION 19: FINAL RETURN PROVISIONS
+Under exceptional circumstances, a full refund may be issued up to 30 days after purchase, at the sole discretion of customer support management.`;
+
+const docInput = document.getElementById('docInput');
+const scanBtn = document.getElementById('scanBtn');
+const sampleBtn = document.getElementById('sampleBtn');
+const resultsArea = document.getElementById('resultsArea');
+const charCount = document.getElementById('charCount');
+
+function updateCharCount() {
+  const n = docInput.value.length;
+  charCount.textContent = n > 0 ? n.toLocaleString() + ' characters' : '';
+}
+docInput.addEventListener('input', updateCharCount);
+
+sampleBtn.addEventListener('click', () => {
+  docInput.value = SAMPLE_DOC;
+  updateCharCount();
+});
+
+function renderEmpty(msg) {
+  resultsArea.innerHTML = `<div class="empty-state">${msg}</div>`;
+}
+
+function renderError(msg) {
+  resultsArea.innerHTML = `<div class="error-box">${msg}</div>`;
+}
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function renderFindings(findings) {
+  if (!findings || findings.length === 0) {
+    resultsArea.innerHTML = `<div class="clean">No contradictions found. The document appears internally consistent on the points it covers.</div>`;
+    return;
+  }
+  let html = `<div class="count-bar"><span class="num">${findings.length}</span><span class="sample-note">${findings.length === 1 ? 'contradiction' : 'contradictions'} found</span></div>`;
+  findings.forEach(f => {
+    const sevClass = (f.severity === 'minor') ? 'minor' : '';
+    html += `
+      <div class="finding ${sevClass}">
+        <div class="finding-head">
+          <span class="finding-topic">${escapeHtml(f.topic || 'Inconsistency')}</span>
+          <span class="sev-tag">${escapeHtml(f.severity || 'major')}</span>
+        </div>
+        <div class="quote-pair">
+          <div class="quote"><span class="loc">${escapeHtml(f.location_a || 'Passage A')}</span>${escapeHtml(f.quote_a || '')}</div>
+          <div class="quote"><span class="loc">${escapeHtml(f.location_b || 'Passage B')}</span>${escapeHtml(f.quote_b || '')}</div>
+        </div>
+        <div class="why">${escapeHtml(f.explanation || '')}</div>
+      </div>
+    `;
+  });
+  resultsArea.innerHTML = html;
+}
+
+async function scanDocument() {
+  const text = docInput.value.trim();
+  const apiKey = document.getElementById('apiKeyInput').value.trim();
+  if (!text) {
+    renderError('Paste a document first — there is nothing to scan yet.');
+    return;
+  }
+  if (!apiKey) {
+    renderError('Enter your Gemini API key above first — get one free at aistudio.google.com.');
+    return;
+  }
+  scanBtn.disabled = true;
+  resultsArea.innerHTML = `<div class="status-line"><span class="spinner"></span>Reading the document and cross-checking every claim against every other claim…</div>`;
+
+  const systemPrompt = `You are a contradiction-detection engine. You are given a document (which may include section labels). Your ONLY job is to find pairs of statements within the document that factually contradict each other — mismatched numbers, dates, deadlines, rules, or conditions that cannot both be true at once.
+
+Do NOT summarize the document. Do NOT flag things that are merely different topics, or that could both be true (e.g. a general policy vs. an exception explicitly carved out for a specific case is NOT a contradiction — only flag it if the document doesn't reconcile them). Only flag genuine logical or factual conflicts.
+
+For each contradiction found, identify:
+- topic: a short label (3-6 words) for what the contradiction is about
+- severity: "major" (legally/financially significant conflict) or "minor" (small inconsistency, low impact)
+- location_a / location_b: a short label for where each statement appears (use section names/numbers if present, otherwise "Paragraph N")
+- quote_a / quote_b: the exact relevant sentence or clause from each location (keep each under 25 words, trimmed to the conflicting part)
+- explanation: one sentence explaining why these two statements conflict
+
+Respond with ONLY a raw JSON array (no markdown fences, no preamble, no commentary). If there are no contradictions, respond with an empty array: []
+
+Example format:
+[{"topic":"Refund window","severity":"major","location_a":"Section 3","location_b":"Section 19","quote_a":"refund within 7 days of purchase","quote_b":"full refund may be issued up to 30 days after purchase","explanation":"Section 3 caps refunds at 7 days while Section 19 allows refunds up to 30 days, with no cross-reference reconciling the two windows."}]`;
+
+  try {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        system_instruction: {
+          parts: [{ text: systemPrompt }]
+        },
+        contents: [
+          { role: "user", parts: [{ text: `Here is the document to scan:\n\n${text}` }] }
+        ],
+        generationConfig: {
+          maxOutputTokens: 1500
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errBody = await response.text();
+      console.error('Gemini error body:', errBody);
+      throw new Error(`API error (${response.status})`);
+    }
+
+    const data = await response.json();
+    const rawText = (data.candidates?.[0]?.content?.parts || [])
+      .map(part => part.text || '')
+      .join('\n')
+      .trim();
+
+    const cleaned = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+
+    let findings;
+    try {
+      findings = JSON.parse(cleaned);
+    } catch (parseErr) {
+      const match = cleaned.match(/\[[\s\S]*\]/);
+      if (match) {
+        findings = JSON.parse(match[0]);
+      } else {
+        throw parseErr;
+      }
+    }
+
+    renderFindings(findings);
+  } catch (err) {
+    console.error(err);
+    renderError('Something went wrong while scanning. Try again, or try a shorter document.');
+  } finally {
+    scanBtn.disabled = false;
+  }
+}
+
+scanBtn.addEventListener('click', scanDocument);
+updateCharCount();
+</script>
+</body>
+</html>
